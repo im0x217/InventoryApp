@@ -1,10 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import { Minus, Plus, Edit2, AlertCircle } from 'lucide-react';
 import { InventoryItem } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 interface ProductCardProps {
   item: InventoryItem;
@@ -13,7 +16,28 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ item, onAdjustStock, onEdit }: ProductCardProps) {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [amount, setAmount] = useState('');
+
   const isLowStock = item.quantity <= item.min_stock;
+
+  const handleAddStock = () => {
+    const num = parseInt(amount);
+    if (num > 0) {
+      onAdjustStock(item.id, num);
+      setAmount('');
+      setIsDialogOpen(false);
+    }
+  };
+
+  const handleRemoveStock = () => {
+    const num = parseInt(amount);
+    if (num > 0) {
+      onAdjustStock(item.id, -num);
+      setAmount('');
+      setIsDialogOpen(false);
+    }
+  };
 
   return (
     <Card className={`${isLowStock ? 'border-red-300 bg-red-50' : ''} hover:shadow-md transition-shadow`}>
@@ -44,7 +68,50 @@ export function ProductCard({ item, onAdjustStock, onEdit }: ProductCardProps) {
 
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-2xl font-bold">{item.quantity}</p>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <button className="text-2xl font-bold hover:text-blue-600 transition-colors cursor-pointer">
+                  {item.quantity}
+                </button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Adjust Stock for {item.name}</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <label htmlFor="amount" className="text-right">
+                      Amount
+                    </label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      className="col-span-3"
+                      placeholder="Enter amount"
+                      min="1"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    onClick={handleRemoveStock}
+                    className="bg-red-600 hover:bg-red-700 text-white h-12 px-6"
+                    disabled={!amount || parseInt(amount) <= 0}
+                  >
+                    Remove from Stock
+                  </Button>
+                  <Button
+                    onClick={handleAddStock}
+                    className="bg-green-600 hover:bg-green-700 text-white h-12 px-6"
+                    disabled={!amount || parseInt(amount) <= 0}
+                  >
+                    Add to Stock
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
             <p className="text-xs text-muted-foreground">Min: {item.min_stock}</p>
           </div>
 
