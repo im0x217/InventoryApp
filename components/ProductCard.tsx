@@ -6,16 +6,24 @@ import { InventoryItem } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 
 interface ProductCardProps {
   item: InventoryItem;
   onAdjustStock: (id: number, delta: number) => void;
   onEdit: (item: InventoryItem) => void;
+  isModUnlocked: boolean;
+  onRequestUnlock: () => void;
 }
 
-export function ProductCard({ item, onAdjustStock, onEdit }: ProductCardProps) {
+export function ProductCard({
+  item,
+  onAdjustStock,
+  onEdit,
+  isModUnlocked,
+  onRequestUnlock,
+}: ProductCardProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [amount, setAmount] = useState('');
 
@@ -39,6 +47,30 @@ export function ProductCard({ item, onAdjustStock, onEdit }: ProductCardProps) {
     }
   };
 
+  const handleEditClick = () => {
+    if (!isModUnlocked) {
+      onRequestUnlock();
+      return;
+    }
+    onEdit(item);
+  };
+
+  const handleQuickAdjust = (delta: number) => {
+    if (!isModUnlocked) {
+      onRequestUnlock();
+      return;
+    }
+    onAdjustStock(item.id, delta);
+  };
+
+  const handleOpenDialog = () => {
+    if (!isModUnlocked) {
+      onRequestUnlock();
+      return;
+    }
+    setIsDialogOpen(true);
+  };
+
   return (
     <Card className={`${isLowStock ? 'border-red-300 bg-red-50' : ''} hover:shadow-md transition-shadow`}>
       <CardContent className="p-4">
@@ -53,7 +85,7 @@ export function ProductCard({ item, onAdjustStock, onEdit }: ProductCardProps) {
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={() => onEdit(item)}
+            onClick={handleEditClick}
           >
             <Edit2 className="h-4 w-4" />
           </Button>
@@ -69,11 +101,13 @@ export function ProductCard({ item, onAdjustStock, onEdit }: ProductCardProps) {
         <div className="flex items-center justify-between">
           <div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <button className="text-2xl font-bold hover:text-blue-600 transition-colors cursor-pointer">
-                  {item.quantity}
-                </button>
-              </DialogTrigger>
+              <button
+                type="button"
+                onClick={handleOpenDialog}
+                className="text-2xl font-bold hover:text-blue-600 transition-colors cursor-pointer"
+              >
+                {item.quantity}
+              </button>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                   <DialogTitle>Adjust Stock for {item.name}</DialogTitle>
@@ -120,8 +154,8 @@ export function ProductCard({ item, onAdjustStock, onEdit }: ProductCardProps) {
               variant="outline"
               size="icon"
               className="h-11 w-11 bg-red-50 hover:bg-red-100 border-red-200"
-              onClick={() => onAdjustStock(item.id, -1)}
-              disabled={item.quantity <= 0}
+              onClick={() => handleQuickAdjust(-1)}
+              disabled={isModUnlocked && item.quantity <= 0}
             >
               <Minus className="h-5 w-5 text-red-600" />
             </Button>
@@ -129,7 +163,7 @@ export function ProductCard({ item, onAdjustStock, onEdit }: ProductCardProps) {
               variant="outline"
               size="icon"
               className="h-11 w-11 bg-green-50 hover:bg-green-100 border-green-200"
-              onClick={() => onAdjustStock(item.id, 1)}
+              onClick={() => handleQuickAdjust(1)}
             >
               <Plus className="h-5 w-5 text-green-600" />
             </Button>

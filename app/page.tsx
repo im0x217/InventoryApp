@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Package } from 'lucide-react';
+import { Plus, Search, Package, Lock, Unlock } from 'lucide-react';
 import { supabase, InventoryItem } from '@/lib/supabaseClient';
 import { ProductCard } from '@/components/ProductCard';
 import { AddEditModal } from '@/components/AddEditModal';
@@ -10,6 +10,17 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+
+const MOD_UNLOCK_KEY = 'inventory_mod_unlocked';
+const MOD_PASSCODE = process.env.NEXT_PUBLIC_MOD_PASSCODE || '';
 
 export default function InventoryDashboard() {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -18,9 +29,18 @@ export default function InventoryDashboard() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
+  const [isModUnlocked, setIsModUnlocked] = useState(false);
+  const [isUnlockOpen, setIsUnlockOpen] = useState(false);
+  const [passcode, setPasscode] = useState('');
+  const [unlockError, setUnlockError] = useState('');
 
   useEffect(() => {
     fetchInventory();
+  }, []);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(MOD_UNLOCK_KEY);
+    setIsModUnlocked(saved === 'true');
   }, []);
 
   useEffect(() => {
@@ -56,7 +76,47 @@ export default function InventoryDashboard() {
     }
   };
 
+  const requireUnlock = () => {
+    setIsUnlockOpen(true);
+  };
+
+  const guardMod = () => {
+    if (!isModUnlocked) {
+      toast.error('Login required to modify inventory');
+      requireUnlock();
+      return false;
+    }
+    return true;
+  };
+
+  const handleUnlock = () => {
+    if (!MOD_PASSCODE) {
+      setUnlockError('Passcode not configured');
+      toast.error('Set NEXT_PUBLIC_MOD_PASSCODE to enable login');
+      return;
+    }
+
+    if (passcode.trim() === MOD_PASSCODE) {
+      window.localStorage.setItem(MOD_UNLOCK_KEY, 'true');
+      setIsModUnlocked(true);
+      setIsUnlockOpen(false);
+      setPasscode('');
+      setUnlockError('');
+      toast.success('Mod unlocked');
+      return;
+    }
+
+    setUnlockError('Invalid passcode');
+  };
+
+  const handleLock = () => {
+    window.localStorage.removeItem(MOD_UNLOCK_KEY);
+    setIsModUnlocked(false);
+    toast.success('Mod locked');
+  };
+
   const handleAdjustStock = async (id: number, delta: number) => {
+    if (!guardMod()) return;
     const item = items.find((i) => i.id === id);
     if (!item) return;
 
@@ -93,6 +153,7 @@ export default function InventoryDashboard() {
   };
 
   const handleSaveItem = async (itemData: Partial<InventoryItem>) => {
+    if (!guardMod()) return;
     try {
       if (editItem) {
         const { error } = await supabase
@@ -123,11 +184,13 @@ export default function InventoryDashboard() {
   };
 
   const handleEdit = (item: InventoryItem) => {
+    if (!guardMod()) return;
     setEditItem(item);
     setIsModalOpen(true);
   };
 
   const handleAddNew = () => {
+    if (!guardMod()) return;
     setEditItem(null);
     setIsModalOpen(true);
   };
@@ -147,13 +210,35 @@ export default function InventoryDashboard() {
                 Inventory Manager
               </h1>
             </div>
-            <Button
-              onClick={handleAddNew}
-              className="h-12 px-6 bg-green-600 hover:bg-green-700 text-white font-medium"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Add Product
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              {isModUnlocked ? (
+                <>
+                  <Button
+                    onClick={handleAddNew}
+                    className="h-12 px-6 bg-green-600 hover:bg-green-700 text-white font-medium"
+                  >
+                    <Plus className="h-5 w-5 mr-2" />
+                    Add Product
+                  </Button>
+                  <Button
+                    onClick={handleLock}
+                    variant="outline"
+                    className="h-12 px-5"
+                  >
+                    <Lock className="h-5 w-5 mr-2" />
+                    Lock Mod
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={requireUnlock}
+                  className="h-12 px-6 bg-slate-900 hover:bg-slate-800 text-white font-medium"
+                >
+                  <Unlock className="h-5 w-5 mr-2" />
+                  Unlock Mod
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="relative">
@@ -190,12 +275,18 @@ export default function InventoryDashboard() {
                 ? 'Try adjusting your search query'
                 : 'Get started by adding your first product'}
             </p>
-            {!searchQuery && (
-              <Button onClick={handleAddNew} className="h-11 bg-green-600 hover:bg-green-700">
-                <Plus className="h-5 w-5 mr-2" />
-                Add Your First Product
-              </Button>
-            )}
+            {!searchQuery &&
+              (isModUnlocked ? (
+                <Button onClick={handleAddNew} className="h-11 bg-green-600 hover:bg-green-700">
+                  <Plus className="h-5 w-5 mr-2" />
+                  Add Your First Product
+                </Button>
+              ) : (
+                <Button onClick={requireUnlock} className="h-11 bg-slate-900 hover:bg-slate-800">
+                  <Unlock className="h-5 w-5 mr-2" />
+                  Unlock Mod
+                </Button>
+              ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -205,6 +296,8 @@ export default function InventoryDashboard() {
                 item={item}
                 onAdjustStock={handleAdjustStock}
                 onEdit={handleEdit}
+                isModUnlocked={isModUnlocked}
+                onRequestUnlock={requireUnlock}
               />
             ))}
           </div>
@@ -220,6 +313,50 @@ export default function InventoryDashboard() {
         onSave={handleSaveItem}
         editItem={editItem}
       />
+
+      <Dialog open={isUnlockOpen} onOpenChange={setIsUnlockOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Unlock Mod Features</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="mod-passcode">Passcode</Label>
+              <Input
+                id="mod-passcode"
+                type="password"
+                value={passcode}
+                onChange={(e) => {
+                  setPasscode(e.target.value);
+                  setUnlockError('');
+                }}
+                placeholder="Enter passcode"
+                className="h-11"
+              />
+              {unlockError && (
+                <p className="text-sm text-red-600">{unlockError}</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsUnlockOpen(false)}
+              className="h-11"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleUnlock}
+              className="h-11 bg-slate-900 hover:bg-slate-800"
+            >
+              Unlock
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
