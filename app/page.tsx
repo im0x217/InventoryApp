@@ -235,7 +235,7 @@ export default function InventoryDashboard() {
                   className="h-12 px-6 bg-slate-900 hover:bg-slate-800 text-white font-medium"
                 >
                   <Unlock className="h-5 w-5 mr-2" />
-                  Unlock Mod
+                  Admin Login
                 </Button>
               )}
             </div>
@@ -281,12 +281,7 @@ export default function InventoryDashboard() {
                   <Plus className="h-5 w-5 mr-2" />
                   Add Your First Product
                 </Button>
-              ) : (
-                <Button onClick={requireUnlock} className="h-11 bg-slate-900 hover:bg-slate-800">
-                  <Unlock className="h-5 w-5 mr-2" />
-                  Unlock Mod
-                </Button>
-              ))}
+              ) : null)}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -297,7 +292,6 @@ export default function InventoryDashboard() {
                 onAdjustStock={handleAdjustStock}
                 onEdit={handleEdit}
                 isModUnlocked={isModUnlocked}
-                onRequestUnlock={requireUnlock}
               />
             ))}
           </div>

@@ -14,7 +14,6 @@ interface ProductCardProps {
   onAdjustStock: (id: number, delta: number) => void;
   onEdit: (item: InventoryItem) => void;
   isModUnlocked: boolean;
-  onRequestUnlock: () => void;
 }
 
 export function ProductCard({
@@ -22,7 +21,6 @@ export function ProductCard({
   onAdjustStock,
   onEdit,
   isModUnlocked,
-  onRequestUnlock,
 }: ProductCardProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [amount, setAmount] = useState('');
@@ -47,30 +45,6 @@ export function ProductCard({
     }
   };
 
-  const handleEditClick = () => {
-    if (!isModUnlocked) {
-      onRequestUnlock();
-      return;
-    }
-    onEdit(item);
-  };
-
-  const handleQuickAdjust = (delta: number) => {
-    if (!isModUnlocked) {
-      onRequestUnlock();
-      return;
-    }
-    onAdjustStock(item.id, delta);
-  };
-
-  const handleOpenDialog = () => {
-    if (!isModUnlocked) {
-      onRequestUnlock();
-      return;
-    }
-    setIsDialogOpen(true);
-  };
-
   return (
     <Card className={`${isLowStock ? 'border-red-300 bg-red-50' : ''} hover:shadow-md transition-shadow`}>
       <CardContent className="p-4">
@@ -81,14 +55,16 @@ export function ProductCard({
               <p className="text-sm text-muted-foreground">{item.category}</p>
             )}
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={handleEditClick}
-          >
-            <Edit2 className="h-4 w-4" />
-          </Button>
+          {isModUnlocked ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => onEdit(item)}
+            >
+              <Edit2 className="h-4 w-4" />
+            </Button>
+          ) : null}
         </div>
 
         {isLowStock && (
@@ -100,74 +76,80 @@ export function ProductCard({
 
         <div className="flex items-center justify-between">
           <div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <button
-                type="button"
-                onClick={handleOpenDialog}
-                className="text-2xl font-bold hover:text-blue-600 transition-colors cursor-pointer"
-              >
-                {item.quantity}
-              </button>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Adjust Stock for {item.name}</DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <label htmlFor="amount" className="text-right">
-                      Amount
-                    </label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      className="col-span-3"
-                      placeholder="Enter amount"
-                      min="1"
-                    />
+            {isModUnlocked ? (
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <button
+                  type="button"
+                  onClick={() => setIsDialogOpen(true)}
+                  className="text-2xl font-bold hover:text-blue-600 transition-colors cursor-pointer"
+                >
+                  {item.quantity}
+                </button>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Adjust Stock for {item.name}</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <label htmlFor="amount" className="text-right">
+                        Amount
+                      </label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="col-span-3"
+                        placeholder="Enter amount"
+                        min="1"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="flex gap-2 justify-end">
-                  <Button
-                    onClick={handleRemoveStock}
-                    className="bg-red-600 hover:bg-red-700 text-white h-12 px-6"
-                    disabled={!amount || parseInt(amount) <= 0}
-                  >
-                    Remove from Stock
-                  </Button>
-                  <Button
-                    onClick={handleAddStock}
-                    className="bg-green-600 hover:bg-green-700 text-white h-12 px-6"
-                    disabled={!amount || parseInt(amount) <= 0}
-                  >
-                    Add to Stock
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      onClick={handleRemoveStock}
+                      className="bg-red-600 hover:bg-red-700 text-white h-12 px-6"
+                      disabled={!amount || parseInt(amount) <= 0}
+                    >
+                      Remove from Stock
+                    </Button>
+                    <Button
+                      onClick={handleAddStock}
+                      className="bg-green-600 hover:bg-green-700 text-white h-12 px-6"
+                      disabled={!amount || parseInt(amount) <= 0}
+                    >
+                      Add to Stock
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            ) : (
+              <span className="text-2xl font-bold">{item.quantity}</span>
+            )}
             <p className="text-xs text-muted-foreground">Min: {item.min_stock}</p>
           </div>
 
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-11 w-11 bg-red-50 hover:bg-red-100 border-red-200"
-              onClick={() => handleQuickAdjust(-1)}
-              disabled={isModUnlocked && item.quantity <= 0}
-            >
-              <Minus className="h-5 w-5 text-red-600" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-11 w-11 bg-green-50 hover:bg-green-100 border-green-200"
-              onClick={() => handleQuickAdjust(1)}
-            >
-              <Plus className="h-5 w-5 text-green-600" />
-            </Button>
-          </div>
+          {isModUnlocked ? (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-11 w-11 bg-red-50 hover:bg-red-100 border-red-200"
+                onClick={() => onAdjustStock(item.id, -1)}
+                disabled={item.quantity <= 0}
+              >
+                <Minus className="h-5 w-5 text-red-600" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-11 w-11 bg-green-50 hover:bg-green-100 border-green-200"
+                onClick={() => onAdjustStock(item.id, 1)}
+              >
+                <Plus className="h-5 w-5 text-green-600" />
+              </Button>
+            </div>
+          ) : null}
         </div>
       </CardContent>
     </Card>
