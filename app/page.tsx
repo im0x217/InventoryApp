@@ -438,7 +438,7 @@ export default function InventoryDashboard() {
         </DialogContent>
       </Dialog>
 
-      <div id="print-area" className="hidden">
+      <div id="print-area" className="print-area">
         <div className="print-page">
           <div className="print-header">
             <div>
@@ -472,6 +472,12 @@ export default function InventoryDashboard() {
       </div>
 
       <style jsx global>{`
+        @media screen {
+          .print-area {
+            display: none;
+          }
+        }
+
         @media print {
           @page {
             size: A4;
@@ -497,6 +503,7 @@ export default function InventoryDashboard() {
             left: 0;
             top: 0;
             width: 100%;
+            display: block !important;
           }
 
           .print-page {
