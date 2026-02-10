@@ -250,11 +250,12 @@ export default function InventoryDashboard() {
   };
 
   return (
-    <div
-      id="app-root"
-      className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100"
-    >
-      <Toaster position="top-center" />
+    <>
+      <div
+        id="app-root"
+        className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100"
+      >
+        <Toaster position="top-center" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
@@ -441,6 +442,8 @@ export default function InventoryDashboard() {
         </DialogContent>
       </Dialog>
 
+      </div>
+
       <div id="print-area" className="print-area">
         <div className="print-page">
           <div className="print-header">
@@ -549,6 +552,6 @@ export default function InventoryDashboard() {
           }
         }
       `}</style>
-    </div>
+    </>
   );
 }
