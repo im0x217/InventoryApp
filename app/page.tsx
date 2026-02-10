@@ -250,7 +250,10 @@ export default function InventoryDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div
+      id="app-root"
+      className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100"
+    >
       <Toaster position="top-center" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -489,20 +492,11 @@ export default function InventoryDashboard() {
             color: #111827;
           }
 
-          body * {
-            visibility: hidden;
-          }
-
-          #print-area,
-          #print-area * {
-            visibility: visible;
+          #app-root {
+            display: none !important;
           }
 
           #print-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
             display: block !important;
           }
 
