@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Search, Package, Lock, Unlock } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Plus, Search, Package, Lock, Unlock, Printer } from 'lucide-react';
 import { supabase, InventoryItem } from '@/lib/supabaseClient';
 import { ProductCard } from '@/components/ProductCard';
 import { AddEditModal } from '@/components/AddEditModal';
@@ -18,6 +18,13 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const MOD_UNLOCK_KEY = 'inventory_mod_unlocked';
 const MOD_PASSCODE = process.env.NEXT_PUBLIC_MOD_PASSCODE || '';
@@ -33,6 +40,48 @@ export default function InventoryDashboard() {
   const [isUnlockOpen, setIsUnlockOpen] = useState(false);
   const [passcode, setPasscode] = useState('');
   const [unlockError, setUnlockError] = useState('');
+  const [printCategory, setPrintCategory] = useState('all');
+
+  const categoryOptions = useMemo(() => {
+    const categoryMap = new Map<string, string>();
+    items.forEach((item) => {
+      const raw = item.category?.trim();
+      if (!raw) return;
+      const key = raw.toLowerCase();
+      if (!categoryMap.has(key)) categoryMap.set(key, raw);
+    });
+    return Array.from(categoryMap.values()).sort((a, b) =>
+      a.localeCompare(b)
+    );
+  }, [items]);
+
+  const hasUncategorized = useMemo(
+    () => items.some((item) => !item.category || item.category.trim() === ''),
+    [items]
+  );
+
+  const printItems = useMemo(() => {
+    if (printCategory === 'all') return items;
+    if (printCategory === 'uncategorized') {
+      return items.filter(
+        (item) => !item.category || item.category.trim() === ''
+      );
+    }
+    return items.filter(
+      (item) =>
+        item.category &&
+        item.category.trim().toLowerCase() === printCategory
+    );
+  }, [items, printCategory]);
+
+  const printCategoryLabel = useMemo(() => {
+    if (printCategory === 'all') return 'All categories';
+    if (printCategory === 'uncategorized') return 'Uncategorized';
+    const match = categoryOptions.find(
+      (category) => category.toLowerCase() === printCategory
+    );
+    return match || 'Selected category';
+  }, [printCategory, categoryOptions]);
 
   useEffect(() => {
     fetchInventory();
@@ -195,6 +244,11 @@ export default function InventoryDashboard() {
     setIsModalOpen(true);
   };
 
+  const handlePrint = () => {
+    if (typeof window === 'undefined') return;
+    window.print();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <Toaster position="top-center" />
@@ -210,7 +264,39 @@ export default function InventoryDashboard() {
                 Inventory Manager
               </h1>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+              <div className="flex flex-col gap-1 sm:min-w-[200px]">
+                <span className="text-xs text-slate-500">Print category</span>
+                <Select value={printCategory} onValueChange={setPrintCategory}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="All categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All categories</SelectItem>
+                    {categoryOptions.map((category) => (
+                      <SelectItem
+                        key={category}
+                        value={category.toLowerCase()}
+                      >
+                        {category}
+                      </SelectItem>
+                    ))}
+                    {hasUncategorized ? (
+                      <SelectItem value="uncategorized">
+                        Uncategorized
+                      </SelectItem>
+                    ) : null}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                onClick={handlePrint}
+                variant="outline"
+                className="h-12 px-5"
+              >
+                <Printer className="h-5 w-5 mr-2" />
+                Print A4
+              </Button>
               {isModUnlocked ? (
                 <>
                   <Button
@@ -351,6 +437,117 @@ export default function InventoryDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <div id="print-area" className="hidden">
+        <div className="print-page">
+          <div className="print-header">
+            <div>
+              <h1>Inventory Storage</h1>
+              <p>Snapshot date: {new Date().toLocaleDateString()}</p>
+            </div>
+            <div className="print-summary">
+              <span>Category: {printCategoryLabel}</span>
+              <span>Total products: {printItems.length}</span>
+            </div>
+          </div>
+          <table className="print-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Category</th>
+                <th>In Storage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {printItems.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.name}</td>
+                  <td>{item.category || '-'}</td>
+                  <td>{item.quantity}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4;
+            margin: 16mm;
+          }
+
+          body {
+            background: #ffffff !important;
+            color: #111827;
+          }
+
+          body * {
+            visibility: hidden;
+          }
+
+          #print-area,
+          #print-area * {
+            visibility: visible;
+          }
+
+          #print-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+
+          .print-page {
+            font-family: "Times New Roman", serif;
+            color: #0f172a;
+          }
+
+          .print-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+          }
+
+          .print-header h1 {
+            font-size: 20px;
+            margin: 0 0 4px 0;
+          }
+
+          .print-header p {
+            margin: 0;
+            font-size: 12px;
+            color: #475569;
+          }
+
+          .print-summary {
+            font-size: 12px;
+            color: #475569;
+          }
+
+          .print-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+          }
+
+          .print-table th,
+          .print-table td {
+            border: 1px solid #e2e8f0;
+            padding: 6px 8px;
+            text-align: left;
+          }
+
+          .print-table th {
+            background: #f8fafc;
+            font-weight: 600;
+          }
+        }
+      `}</style>
     </div>
   );
 }
