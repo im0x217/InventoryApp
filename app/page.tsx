@@ -41,6 +41,7 @@ export default function InventoryDashboard() {
   const [passcode, setPasscode] = useState('');
   const [unlockError, setUnlockError] = useState('');
   const [printCategory, setPrintCategory] = useState('all');
+  const [printDate, setPrintDate] = useState('');
 
   const categoryOptions = useMemo(() => {
     const categoryMap = new Map<string, string>();
@@ -85,6 +86,10 @@ export default function InventoryDashboard() {
 
   useEffect(() => {
     fetchInventory();
+  }, []);
+
+  useEffect(() => {
+    setPrintDate(new Date().toLocaleDateString());
   }, []);
 
   useEffect(() => {
@@ -449,7 +454,7 @@ export default function InventoryDashboard() {
           <div className="print-header">
             <div>
               <h1>Inventory Storage</h1>
-              <p>Snapshot date: {new Date().toLocaleDateString()}</p>
+              <p>Snapshot date: {printDate}</p>
             </div>
             <div className="print-summary">
               <span>Category: {printCategoryLabel}</span>
