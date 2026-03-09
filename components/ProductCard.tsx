@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Minus, Plus, Edit2, AlertCircle } from 'lucide-react';
-import { InventoryItem } from '@/lib/supabaseClient';
+import { InventoryItem } from '@/lib/pocketbaseClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

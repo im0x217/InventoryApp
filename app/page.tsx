@@ -2,7 +2,11 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Package, Lock, Unlock, Printer } from 'lucide-react';
-import { supabase, InventoryItem } from '@/lib/supabaseClient';
+import {
+  pocketbase,
+  InventoryItem,
+  mapInventoryRecordToItem,
+} from '@/lib/pocketbaseClient';
 import { ProductCard } from '@/components/ProductCard';
 import { AddEditModal } from '@/components/AddEditModal';
 import { Button } from '@/components/ui/button';
@@ -28,6 +32,18 @@ import {
 
 const MOD_UNLOCK_KEY = 'inventory_mod_unlocked';
 const MOD_PASSCODE = process.env.NEXT_PUBLIC_MOD_PASSCODE || '';
+
+const normalizeNumber = (value: number | undefined, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
+};
+
+const getNextLegacyId = (inventoryItems: InventoryItem[]) => {
+  const maxId = inventoryItems.reduce((acc, item) => {
+    return item.id > acc ? item.id : acc;
+  }, 0);
+  return maxId + 1;
+};
 
 export default function InventoryDashboard() {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -115,13 +131,15 @@ export default function InventoryDashboard() {
   const fetchInventory = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('inventory')
-        .select('*')
-        .order('name', { ascending: true });
+      const records = await pocketbase.collection('inventory').getFullList({
+        sort: 'name',
+      });
 
-      if (error) throw error;
-      setItems(data || []);
+      const mapped = records
+        .map((record) => mapInventoryRecordToItem(record as never))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      setItems(mapped);
     } catch (error) {
       console.error('Error fetching inventory:', error);
       toast.error('Failed to load inventory');
@@ -183,12 +201,10 @@ export default function InventoryDashboard() {
     );
 
     try {
-      const { error } = await supabase
-        .from('inventory')
-        .update({ quantity: newQuantity })
-        .eq('id', id);
-
-      if (error) throw error;
+      await pocketbase.collection('inventory').update(item.recordId, {
+        quantity: newQuantity,
+        last_updated_legacy: new Date().toISOString(),
+      });
 
       toast.success(
         delta > 0
@@ -209,22 +225,27 @@ export default function InventoryDashboard() {
   const handleSaveItem = async (itemData: Partial<InventoryItem>) => {
     if (!guardMod()) return;
     try {
-      if (editItem) {
-        const { error } = await supabase
-          .from('inventory')
-          .update(itemData)
-          .eq('id', editItem.id);
+      const payload = {
+        name: (itemData.name || '').trim(),
+        quantity: normalizeNumber(itemData.quantity, 0),
+        min_stock: normalizeNumber(itemData.min_stock, 5),
+        category: (itemData.category || '').trim() || null,
+        last_updated_legacy: new Date().toISOString(),
+      };
 
-        if (error) throw error;
+      if (editItem) {
+        await pocketbase
+          .collection('inventory')
+          .update(editItem.recordId, payload);
+
         toast.success('Product updated successfully');
       } else {
-        const { data, error } = await supabase
-          .from('inventory')
-          .insert([itemData])
-          .select()
-          .single();
+        const legacyId = String(getNextLegacyId(items));
+        await pocketbase.collection('inventory').create({
+          legacy_id: legacyId,
+          ...payload,
+        });
 
-        if (error) throw error;
         toast.success('Product added successfully');
       }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { InventoryItem } from '@/lib/supabaseClient';
+import { InventoryItem } from '@/lib/pocketbaseClient';
 import {
   Dialog,
   DialogContent,
